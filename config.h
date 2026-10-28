@@ -4,11 +4,11 @@
 #include <Arduino.h>
 
 // 1. CẤU HÌNH KẾT NỐI WIFI
-#define WIFI_SSID               "MERCUSYS_5B6E"              // Tên WiFi của máy tính đang kết nối
+#define WIFI_SSID               "ko tên"              // Tên WiFi của máy tính đang kết nối
 #define WIFI_PASSWORD           ""                           // Mật khẩu WiFi
 
 // 2. CẤU HÌNH MQTT BROKER
-#define MQTT_BROKER             "192.168.0.101"       // IP máy tính trong mạng WiFi (từ ipconfig)
+#define MQTT_BROKER             "10.210.42.234"       // IP máy tính trong mạng WiFi (từ ipconfig)
 #define MQTT_PORT               8883                  // Port theo yêu cầu của bạn
 
 #define MQTT_CLIENT_ID          "ESP32_IoT_Client" 

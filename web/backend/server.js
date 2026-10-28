@@ -28,22 +28,46 @@ pool.connect((err, client, release) => {
   release();
 });
 
-// MQTT Connection
+// MQTT Connection & Realtime State Tracking
 const mqttBroker = process.env.MQTT_BROKER || '127.0.0.1';
 const mqttPort = process.env.MQTT_PORT || 8883;
+
+let isMqttBrokerConnected = false;
+
 const client = mqtt.connect(`mqtt://${mqttBroker}:${mqttPort}`, {
     username: process.env.MQTT_USERNAME || 'admin',
     password: process.env.MQTT_PASSWORD || '123456',
-    clientId: 'nodejs_backend_' + Math.random().toString(16).substring(2, 8)
+    clientId: 'nodejs_backend_' + Math.random().toString(16).substring(2, 8),
+    reconnectPeriod: 2000 // Tự động thử kết nối lại mỗi 2 giây
 });
 
 client.on('connect', () => {
+  isMqttBrokerConnected = true;
   console.log('Connected to MQTT broker at mqtt://' + mqttBroker + ':' + mqttPort);
   client.subscribe('data_sensor');
   client.subscribe('device_status');
 });
 
-client.on('error', (err) => console.error('MQTT Connection Error:', err));
+client.on('reconnect', () => {
+  isMqttBrokerConnected = false;
+});
+
+client.on('close', () => {
+  isMqttBrokerConnected = false;
+});
+
+client.on('offline', () => {
+  isMqttBrokerConnected = false;
+});
+
+client.on('end', () => {
+  isMqttBrokerConnected = false;
+});
+
+client.on('error', (err) => {
+  isMqttBrokerConnected = false;
+  console.error('MQTT Connection Error:', err.message);
+});
 
 client.on('message', async (topic, message) => {
   const msgStr = message.toString();
@@ -125,6 +149,37 @@ client.on('message', async (topic, message) => {
   }
 });
 
+// ======================= AUTHENTICATION MIDDLEWARE =======================
+const API_TOKEN = process.env.API_TOKEN || 'iot_esp32_token_ptit_2026';
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    
+    // Hỗ trợ cả chuẩn "Bearer <token>" lẫn gửi token trực tiếp
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+        ? authHeader.slice(7).trim() 
+        : authHeader;
+
+    if (!token) {
+        return res.status(401).json({ 
+            success: false,
+            error: 'Unauthorized: Yêu cầu Token xác thực (Thiếu Header Authorization: Bearer <TOKEN>)' 
+        });
+    }
+
+    if (token !== API_TOKEN) {
+        return res.status(403).json({ 
+            success: false,
+            error: 'Forbidden: Token xác thực không chính xác hoặc không có quyền truy cập' 
+        });
+    }
+
+    next();
+};
+
+// Áp dụng xác thực Token bắt buộc cho toàn bộ các endpoints /api/*
+app.use('/api', authenticateToken);
+
 // ======================= REST APIs =======================
 
 // Lấy thông số môi trường mới nhất
@@ -147,6 +202,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
             if (row.sensor_type === 'HUMIDITY') stats.humidity = row.value;
             if (row.sensor_type === 'LIGHT') stats.light = row.value;
         });
+        // Trạng thái kết nối thời gian thực của MQTT Broker
+        stats.mqtt_connected = Boolean(isMqttBrokerConnected && client && client.connected);
         res.json(stats);
     } catch (err) {
         res.status(500).json({ error: err.message });

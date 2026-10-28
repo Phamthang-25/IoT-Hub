@@ -10,8 +10,17 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState([]);
   const [devices, setDevices] = useState({ LED1: 'OFF', LED2: 'OFF' });
   const [loadingDevices, setLoadingDevices] = useState({ LED1: false, LED2: false });
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [isMqttOnline, setIsMqttOnline] = useState(false);
+
   const loadingDevicesRef = useRef({ LED1: false, LED2: false });
   loadingDevicesRef.current = loadingDevices;
+
+  // Cập nhật mốc thời gian mỗi giây để tính toán trạng thái timeout 10 giây chính xác từng giây
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -21,6 +30,9 @@ const Dashboard = () => {
         axios.get(`${API_BASE}/devices/status`)
       ]);
       setStats(statsRes.data);
+
+      // Cập nhật trạng thái kết nối thực tế của MQTT Broker từ Backend
+      setIsMqttOnline(Boolean(statsRes.data && statsRes.data.mqtt_connected));
       
       // format chart data timestamp to include seconds
       const formattedChart = chartRes.data.map(d => ({
@@ -29,7 +41,7 @@ const Dashboard = () => {
       }));
       setChartData(formattedChart);
       
-      // Cập nhật trạng thái thiết bị (bảo lưu trạng thái nếu thiết bị đó đang trong 2s loading)
+      // Cập nhật trạng thái thiết bị (bảo lưu trạng thái nếu thiết bị đó đang trong quá trình loading)
       setDevices(prev => {
         const next = { ...devicesRes.data };
         if (loadingDevicesRef.current.LED1) next.LED1 = prev.LED1;
@@ -38,6 +50,7 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setIsMqttOnline(false);
     }
   };
 
@@ -77,6 +90,10 @@ const Dashboard = () => {
       setLoadingDevices(prev => ({ ...prev, [deviceId]: false }));
     }
   };
+
+  // Logic kiểm tra trạng thái thiết bị ESP32: Quá 10 giây (10000ms) không có bản ghi mới -> OFFLINE
+  const lastSensorTime = chartData.length > 0 ? new Date(chartData[chartData.length - 1].created_at).getTime() : 0;
+  const isEsp32Online = lastSensorTime > 0 && (currentTime - lastSensorTime) <= 10000;
 
   return (
     <div className="space-y-5">
@@ -210,9 +227,9 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${chartData.length > 0 && (new Date() - new Date(chartData[chartData.length - 1].created_at)) < 15000 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
-                <span className={`font-semibold px-3 py-0.5 rounded-full text-xs ${chartData.length > 0 && (new Date() - new Date(chartData[chartData.length - 1].created_at)) < 15000 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
-                  {chartData.length > 0 && (new Date() - new Date(chartData[chartData.length - 1].created_at)) < 15000 ? 'ONLINE' : 'OFFLINE'}
+                <div className={`w-2.5 h-2.5 rounded-full ${isEsp32Online ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
+                <span className={`font-semibold px-3 py-0.5 rounded-full text-xs ${isEsp32Online ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                  {isEsp32Online ? 'ONLINE' : 'OFFLINE'}
                 </span>
               </div>
             </div>
@@ -228,8 +245,10 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                <span className="font-semibold text-green-600 bg-green-50 px-3 py-0.5 rounded-full text-xs">ONLINE</span>
+                <div className={`w-2.5 h-2.5 rounded-full ${isMqttOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
+                <span className={`font-semibold px-3 py-0.5 rounded-full text-xs ${isMqttOnline ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                  {isMqttOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </div>
             </div>
           </div>

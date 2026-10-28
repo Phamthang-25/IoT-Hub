@@ -11,6 +11,16 @@ const Layout = () => {
     return () => clearInterval(timer);
   }, []);
   
+  const formatDateTime = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   const getPageTitle = () => {
     switch(location.pathname) {
       case '/': return 'Bảng điều khiển';
@@ -76,11 +86,11 @@ const Layout = () => {
             <span className="font-semibold text-gray-800">IoT Hub</span> / {getPageTitle()}
           </div>
           
-          {/* Thay thế Admin bằng Đồng hồ thời gian thực */}
+          {/* Đồng hồ thời gian thực: yyyy/MM/dd hh:mm:ss */}
           <div className="flex items-center space-x-3 bg-purple-50 px-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
             <Clock size={15} className="text-purple-600" />
-            <span className="font-semibold text-xs text-purple-700 tracking-wide">
-              {time.toLocaleTimeString('vi-VN')} - {time.toLocaleDateString('vi-VN')}
+            <span className="font-semibold text-xs text-purple-700 tracking-wide font-mono">
+              {formatDateTime(time)}
             </span>
           </div>
         </header>

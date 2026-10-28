@@ -15,9 +15,9 @@ const Profile = () => {
       }
     }
     return {
-      github: 'https://github.com/phambathang',
-      figma: 'https://www.figma.com',
-      postman: 'https://documenter.getpostman.com'
+      github: 'https://github.com/Phamthang-25/IoT-Hub',
+      figma: 'https://www.figma.com/design/WduP7mfo8tzxjTTMAboAv0/DataIoT?node-id=1669-162202&t=kdQXSrqFp4OLGpPo-1',
+      postman: 'https://documenter.getpostman.com/view/51589237/2sBYHVvyoe'
     };
   });
 

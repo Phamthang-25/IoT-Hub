@@ -37,6 +37,20 @@ const SensorData = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Hàm định dạng thời gian chuẩn: yyyy/MM/dd hh:mm:ss
+  const formatDateTime = (dateInput) => {
+    if (!dateInput) return '-';
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '-';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   // Chỉ khi ấn SEARCH (hoặc Enter) mới áp dụng các tiêu chí lọc
   const handleSearch = () => {
     setAppliedFilters({
@@ -51,7 +65,7 @@ const SensorData = () => {
   const getSearchPlaceholder = () => {
     switch (searchOption) {
       case 'TIME':
-        return 'Tìm theo thời gian (VD: 20:47, 12/10)...';
+        return 'Tìm theo thời gian (VD: 2026/10/22, 10:15)...';
       case 'CB Nhiệt độ':
         return 'Tìm giá trị nhiệt độ (VD: 32)...';
       case 'CB Độ ẩm':
@@ -70,11 +84,12 @@ const SensorData = () => {
 
     const searchTrimmed = appliedFilters.term.trim().toLowerCase();
 
-    // 2. Nếu option là THỜI GIAN -> Ô tìm kiếm tìm theo thời gian
+    // 2. Nếu option là THỜI GIAN -> Ô tìm kiếm tìm theo thời gian (hỗ trợ cả định dạng yyyy/MM/dd hh:mm:ss)
     if (appliedFilters.option === 'TIME') {
+      const timeFormatted = formatDateTime(item.created_at).toLowerCase();
       const timeFormattedVi = new Date(item.created_at).toLocaleString('vi-VN').toLowerCase();
       const timeIso = new Date(item.created_at).toISOString().toLowerCase();
-      const matchTime = searchTrimmed === '' || timeFormattedVi.includes(searchTrimmed) || timeIso.includes(searchTrimmed);
+      const matchTime = searchTrimmed === '' || timeFormatted.includes(searchTrimmed) || timeFormattedVi.includes(searchTrimmed) || timeIso.includes(searchTrimmed);
       return matchCode && matchTime;
     }
 
@@ -182,8 +197,8 @@ const SensorData = () => {
                 <td className={`py-4 px-4 font-semibold ${row.sensor_type === 'TEMPERATURE' ? 'text-red-500' : row.sensor_type === 'HUMIDITY' ? 'text-blue-500' : 'text-yellow-600'}`}>
                   {row.value}
                 </td>
-                <td className="py-4 px-4 text-gray-500">
-                  {new Date(row.created_at).toLocaleString('vi-VN')}
+                <td className="py-4 px-4 text-gray-500 font-mono text-xs">
+                  {formatDateTime(row.created_at)}
                 </td>
               </tr>
             ))}

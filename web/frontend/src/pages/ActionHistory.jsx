@@ -39,6 +39,20 @@ const ActionHistory = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Hàm định dạng thời gian chuẩn: yyyy/MM/dd hh:mm:ss
+  const formatDateTime = (dateInput) => {
+    if (!dateInput) return '-';
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '-';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   const handleSearch = () => {
       setAppliedSearchTerm(searchTerm);
       setAppliedFilters({
@@ -61,8 +75,10 @@ const ActionHistory = () => {
     if (searchTrimmed === '') return matchDevice && matchAction && matchStatus;
 
     const tokens = searchTrimmed.split(/[\s,]+/).filter(Boolean);
-    const timeSentStr = new Date(item.sent_at).toLocaleString('vi-VN').toLowerCase();
-    const timeReplyStr = item.replied_at ? new Date(item.replied_at).toLocaleString('vi-VN').toLowerCase() : '';
+    const timeSentStr = formatDateTime(item.sent_at).toLowerCase();
+    const timeSentVi = new Date(item.sent_at).toLocaleString('vi-VN').toLowerCase();
+    const timeReplyStr = item.replied_at ? formatDateTime(item.replied_at).toLowerCase() : '';
+    const timeReplyVi = item.replied_at ? new Date(item.replied_at).toLocaleString('vi-VN').toLowerCase() : '';
     const deviceIdStr = (item.device_id || '').toLowerCase();
     const deviceNameStr = (item.device_name || '').toLowerCase();
     const actionStr = (item.action || '').toLowerCase();
@@ -74,7 +90,9 @@ const ActionHistory = () => {
       actionStr.includes(token) ||
       statusStr.includes(token) ||
       timeSentStr.includes(token) ||
-      timeReplyStr.includes(token)
+      timeSentVi.includes(token) ||
+      timeReplyStr.includes(token) ||
+      timeReplyVi.includes(token)
     );
 
     return matchDevice && matchAction && matchStatus && matchSearchTerm;
@@ -199,11 +217,11 @@ const ActionHistory = () => {
                     {row.status}
                   </span>
                 </td>
-                <td className="py-4 px-4 text-gray-500">
-                  {new Date(row.sent_at).toLocaleString('vi-VN')}
+                <td className="py-4 px-4 text-gray-500 font-mono text-xs">
+                  {formatDateTime(row.sent_at)}
                 </td>
-                <td className="py-4 px-4 text-gray-500">
-                  {row.replied_at ? new Date(row.replied_at).toLocaleString('vi-VN') : '-'}
+                <td className="py-4 px-4 text-gray-500 font-mono text-xs">
+                  {row.replied_at ? formatDateTime(row.replied_at) : '-'}
                 </td>
               </tr>
             ))}
