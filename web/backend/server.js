@@ -249,17 +249,66 @@ app.get('/api/sensors', async (req, res) => {
     }
 });
 
-// API cho trang Lịch sử hành động
+// API cho trang Lịch sử hành động (Hỗ trợ phân trang: ?page=1&limit=10 & lọc tùy chọn)
 app.get('/api/history', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        // Xử lý các bộ lọc tùy chọn nếu có
+        const { device, action, status } = req.query;
+        let whereClauses = [];
+        let params = [];
+
+        if (device && device !== 'ALL') {
+            params.push(device.toUpperCase());
+            whereClauses.push(`UPPER(d.device_code) = $${params.length}`);
+        }
+        if (action && action !== 'ALL') {
+            params.push(action.toUpperCase());
+            whereClauses.push(`UPPER(ah.action) = $${params.length}`);
+        }
+        if (status && status !== 'ALL') {
+            params.push(status.toUpperCase());
+            whereClauses.push(`UPPER(ah.status) = $${params.length}`);
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        // 1. Đếm tổng số bản ghi thỏa điều kiện
+        const countQuery = `
+            SELECT COUNT(*) 
+            FROM action_history ah 
+            JOIN devices d ON ah.device_id = d.id 
+            ${whereSql}
+        `;
+        const countRes = await pool.query(countQuery, params);
+        const total = parseInt(countRes.rows[0].count, 10);
+        const totalPages = Math.ceil(total / limit) || 1;
+
+        // 2. Truy vấn dữ liệu phân trang theo LIMIT và OFFSET
+        const dataParams = [...params, limit, offset];
+        const dataQuery = `
             SELECT ah.id, d.device_code as device_id, d.device_name, ah.action, ah.status, ah.action_time as sent_at, ah.response_time as replied_at
             FROM action_history ah
             JOIN devices d ON ah.device_id = d.id
+            ${whereSql}
             ORDER BY ah.action_time DESC
-            LIMIT 50
-        `);
-        res.json(result.rows);
+            LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+        `;
+        const dataRes = await pool.query(dataQuery, dataParams);
+
+        res.json({
+            success: true,
+            data: dataRes.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages
+            }
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -28,8 +28,9 @@ const ActionHistory = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/history`);
-        setHistory(res.data);
+        const res = await axios.get(`${API_BASE}/history?limit=100`);
+        const historyData = Array.isArray(res.data) ? res.data : (res.data.data || []);
+        setHistory(historyData);
       } catch (error) {
         console.error('Error fetching action history:', error);
       }
